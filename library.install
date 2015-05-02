@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * Implements hook_schema
+ */
+
+function library_schema(){
+
+$schema['library'] = array(
+  'description' => 'Table for library module',
+  'fields' => array(
+  	'id' => array(
+      'description' => 'this is the id',
+      'type' => 'serial',
+      'size' => 'small',
+      'not null' => TRUE,
+    ),
+    'title' => array(
+      'description' => 'Title',
+      'type' => 'varchar',
+      'length' => '100',
+      'not null' => TRUE,
+    ),
+    'author' => array(
+      'description' => 'Author',
+      'type' => 'varchar',
+      'length' => '100',
+      'not null' => TRUE,
+    ),
+	'publisher' => array(
+      'description' => 'Publisher',
+      'type' => 'varchar',
+      'length' => '100',
+      'not null' => TRUE,
+    ),
+	'year' => array(
+      'description' => 'Year',
+      'type' => 'varchar',
+      'length' => '4',
+      'not null' => TRUE,
+    ),
+    'isbn' => array(
+      'description' => 'ISBN',
+      'type' => 'varchar',
+      'length' => '15',
+      'not null' => TRUE,
+    ),
+    'status' => array(
+      'description' => 'Status',
+      'type' => 'varchar',
+      'length' => '12',
+      'not null' => TRUE,
+    ),
+  ),
+  'primary key' => array('id'),
+);
+
+	return $schema;
+}

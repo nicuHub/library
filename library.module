@@ -1,0 +1,288 @@
+<?php
+
+/**
+ * Implements library_menu().
+ */
+
+function library_menu() {
+    $items = array();
+    
+    // form for adding books.
+    
+    $items['library/add'] = array(
+        'title' => t('Add Book'),
+        'page callback' => 'drupal_get_form', 
+        'page arguments' => array('library_add_form'),
+        'access arguments' => array('administer library module'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+    
+    //page with form for editing book status.
+    
+    $items['library/edit/%'] = array(
+        'title' => t('Edit Book'),
+        'page callback' => 'drupal_get_form', 
+        'page arguments' => array('library_add_form', 1),
+        'access arguments' => array('administer library module'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+
+    //page for displaying library database table content.
+    
+    $items['library'] = array( 
+        'title' => 'Library',
+        'page callback' => 'mytable_display', 
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+    );
+
+    return $items;
+}
+
+
+/**
+ * Implements library_form().
+ */
+
+function library_add_form($form, &$form_state, $id=0) {
+    
+  $form['title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Title'),
+    '#required' => TRUE, 
+  );
+  $form['author'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Author'),
+    '#required' => TRUE,
+  );
+  $form['publisher'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Publisher'),
+    '#required' => TRUE,
+  );
+  $form['year'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Year'),
+    '#required' => TRUE,
+  );
+  $form['isbn'] = array(
+    '#type' => 'textfield',
+    '#title' => t('ISBN'),
+    '#description' => 'ISBN - max 13 digit number.',
+    '#required' => TRUE, 
+  );
+  $form['status'] = array(
+    '#type' => 'select',
+    '#title' => t('Status'),
+    '#required' => TRUE, 
+    "#default_value" => variable_get("plugin1", true),
+    "#options" => array(
+        "Available" => t("Available"),
+        "Unavailable" => t("Unavailable"), 
+        ),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+    '#validate' =>  array('library_form_validate'),
+    '#submit' =>  array('library_form_submit'),
+  );
+  return $form;
+}
+
+/**
+ * Implements library_form_validate().
+ * Checks if ISBN number contains 10 or 13 only digit characters.
+ */
+function library_form_validate($form, $form_state) { 
+    if ((strlen($form_state['values']['isbn']) != 10) 
+            && (strlen($form_state['values']['isbn']) != 13)
+            || (!ctype_digit($form_state['values']['isbn']))){
+                form_set_error('isbn', 'ISBN should be a 10 or 13 digit number.');
+    }
+}
+
+/**
+ * Implements library_form_submit().
+ */
+
+function library_form_submit($form, $form_state) {
+
+  db_insert('library')
+    ->fields(array(
+      'title' => $form_state['values']['title'], 
+      'author' => $form_state['values']['author'],
+      'publisher' => $form_state['values']['publisher'],
+      'year' => $form_state['values']['year'],
+      'isbn' => $form_state['values']['isbn'],  
+      'status' => $form_state['values']['status'],       
+    ))->execute();
+    drupal_set_message("Book registered!");
+}
+
+
+/**
+ * Implements library_form().
+ */
+
+function library_edit_form($form, &$form_state, $variable) {
+   
+
+  $form['id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('ID'),
+    '#default_value' => arg(2),
+    '#description' => 'Book ID?',
+    '#required' => TRUE, 
+  );
+
+  $form['status'] = array(
+    '#type' => 'select',
+    '#title' => t('Status'),
+    '#required' => TRUE, 
+    "#default_value" => variable_get("plugin1", true),
+    "#options" => array(
+        "Available" => t("Available"),
+        "Unavailable" => t("Unavailable"), 
+        ),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+    '#submit' =>  array('library_edit_form_submit'),
+  );
+  return $form;
+}
+
+/**
+ * Implements library_edit_form_submit().
+ */
+
+function library_edit_form_submit($form, $form_state) {
+
+ db_update('library')
+    ->fields(array(            
+            'status' => $form_state['values']['status'],
+            )
+    )
+    ->condition('id', $form_state['values']['id'])
+    ->execute();
+    drupal_set_message("Book status updated");
+}
+
+
+/**
+ * Implements library_permission().
+ */
+
+function library_permission() {
+  return array(
+    'administer library module' => array(
+      'title' => t('Administer library module'),
+      'description' => t('Perform administration tasks for library module.'),
+    ),
+  );
+}
+
+/*
+ * QR code generator 
+ */
+//defining the base path of your Drupal installation
+/*global $base_url;
+
+function library_preprocess_node(&$vars) {
+  // First we need to create the path for the img which will be generated as a png file. 
+  // This will be automatically created using the code below
+  $qrpath = variable_get('file_public_path', conf_path() . '/files') . "/images/" . $vars['nid'] . '-C-qr.png'; 
+  
+  // This is the  data to be added to the QR code.  
+  $text = "title";
+  
+  // If the path is available we proceed to generate the form 
+  if (!file_exists($qrpath)) {
+    $qrpath =  theme_name_qrcode($text , $qrpath);
+  }
+  
+  // This will print the path to the image in a theme
+  $vars['qrimgpath'] = $qrpath;
+}
+
+function theme_name_qrcode($text , $qrpath) {
+  // Including the qrcode library and generating the code
+  include("sites/all/libraries/phpqrcode/qrlib.php");
+  QRcode::png($text, $qrpath);
+
+  return $qrpath;
+}*/
+
+
+/**
+ * Function to display library database table in table format with pager.
+ */
+
+function mytable_display() {
+$header = array(
+            array(
+                'data' => t('ID'),
+                'field' => 't.id',
+            ),
+            array(
+                'data' => t('Title'),
+                'field' => 't.title',
+            ),
+            array(
+                'data' => t('Author'),
+                'field' => 't.author',
+            ),
+            array(
+                'data' => t('Publisher'),
+                'field' => 't.publisher',
+            ),
+            array(
+                'data' => t('Year'),
+                'field' => 't.year',
+            ),
+            array(
+                'data' => t('ISBN'),
+                'field' => 't.isbn',
+            ),
+            array(
+                'data' => t('Status'),
+                'field' => 't.status',
+            ),
+            array(
+                'data' => t('Edit'),
+
+            ),
+        );
+
+
+  $query = db_select('library', 't');
+
+  $query->fields('t', array('id','title','author','publisher','year','isbn','status'));
+
+  $table_sort = $query->extend('TableSort')
+                      ->orderByHeader($header);
+
+  $pager = $table_sort->extend('PagerDefault')
+                      ->limit(20);
+
+  $result = $pager->execute();
+
+  $rows = array();
+        foreach ($result as $row) {
+            $editlink = l('Edit', '/library/edit/'.$row->id);
+
+            $rows[] = array('data' => array($row->id, $row->title, $row->author, $row->publisher, $row->year, $row->isbn, $row->status, $editlink));
+
+        }
+
+   $output = theme('pager');
+        $output .= theme('table', array('header' => $header, 'rows' => $rows, "empty" => t("No Records Found"), 'attributes' => array('id' => 'sort-table', 'class' => array('tbl-data'))));
+        $output .= theme('pager');
+
+    return $output;
+}
